@@ -1,25 +1,9 @@
 """
-Source -->https://github.com/ggerganov/ggml/blob/master/docs/gguf.md
-,https://github.com/99991/pygguf/blob/main/gguf.py
+Source -> https://github.com/99991/pygguf/blob/main/gguf.py
 """
 import struct
-import warnings
-
-DATA_TYPES = {
-    "uint8": 0,
-    "int8": 1,
-    "uint16": 2,
-    "int16": 3,
-    "uint32": 4,
-    "int32": 5,
-    "float32": 6,
-    "bool": 7,
-    "string": 8,
-    "array": 9,
-    "uint64": 10,
-    "int64": 11,
-    "float64": 12,
-}
+import numpy as np
+from helper import DATA_TYPES,GGML_BLOCK_SIZES,GGML_ELEMENTS_PER_BLOCK,GGML_NAMES,GGML_DEQUANTIZE,GGML_TYPES
 
 
 def read_value(f, data_type):
@@ -104,12 +88,36 @@ def load_gguf(f):
 
     return info, tensor
 
+def load_gguf_tensor(f,tensorinfo,name):
+    t = tensorinfo[name]
+    offset = t["offset"]
+    shape = t["shape"]
+    ggml_type = t["ggml_type"]
+    
+    if ggml_type not in GGML_NAMES:
+        raise NotImplementedError(f"ggml_type {ggml_type} not implemented")
+    
+    ggml_name = GGML_NAMES[ggml_type]
+    
+    block_size = GGML_BLOCK_SIZES[ggml_name]
+    elements_per_block = GGML_ELEMENTS_PER_BLOCK[ggml_name]
+    dequantize = GGML_DEQUANTIZE[ggml_name]
+
+    num_elements = np.prod(shape)
+
+    f.seek(offset)
+
+    size = num_elements * block_size // elements_per_block
+    data = f.read(size)
+    values = dequantize(data)
+
+    return values.reshape(shape[::-1])
 
 import os
 cwd = os.getcwd()
 f2 = cwd + "/models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
 with open(f2, "rb") as f:
     info , tensor = load_gguf(f)
-    print(info.keys())
-    print(tensor.keys())    
-
+    for name in tensor:
+        weights = load_gguf_tensor(f, tensor, name)
+        print(weights)
