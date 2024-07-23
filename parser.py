@@ -115,9 +115,15 @@ def load_gguf_tensor(f,tensorinfo,name):
 
 import os
 cwd = os.getcwd()
+
+import torch
+from tinygrad.nn.state import safe_save,safe_load_metadata
+from tinygrad import Tensor
+
 f2 = cwd + "/models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
 with open(f2, "rb") as f:
     info , tensor = load_gguf(f)
+    tens_dict = {}
     for name in tensor:
         weights = load_gguf_tensor(f, tensor, name)
         shape = tensor[name]["shape"]
@@ -129,11 +135,48 @@ with open(f2, "rb") as f:
             weights = weights.reshape(shape[::-1])
         
         t_tensor_view = translate_name(name)
-        #print(f"{t_tensor_view} {shape}")
-        
-from safetensors.torch import load_file
-from safetensors import safe_open
-sf = cwd + "/models/model.safetensors"
+        # print(f"{t_tensor_view} : {(torch.from_numpy(weights)).dtype}")
+        # print(f"{t_tensor_view} : {Tensor(weights)}")
+        tens_dict[t_tensor_view] = Tensor(weights.astype(np.float16))
+           
+    safe_save(tens_dict,"models/tinymod.safetensor")
+    
+
+
+##--/////----/-//////////-----------//////////////--------//////-
+# from tinygrad.dtype import dtypes
+# import json
+
+# def hack_safe_load_metadata(tens_dict):
+#     for key,val in tens_dict.items():
+#         t = val if isinstance(val, Tensor) else Tensor.empty(os.stat(val).st_size, dtype=dtypes.uint8, device=f"disk:{val}")
+#         print(t)
+        # json_len = t[0:8].bitcast(dtypes.int64).item()
+        # metadata = json.loads(t[8:8+json_len].numpy().tobytes())
+        # return t,json_len,metadata
+    
+# hack_safe_load_metadata(tens_dict)
+
+# safe_dtypes = {"BOOL":dtypes.bool, "I8":dtypes.int8, "U8":dtypes.uint8, "I16":dtypes.int16, "U16":dtypes.uint16, "I32":dtypes.int, "U32":dtypes.uint,
+#                "I64":dtypes.int64, "U64":dtypes.uint64, "F16":dtypes.float16, "BF16":dtypes.bfloat16, "F32":dtypes.float32, "F64":dtypes.float64}
+
+# def hack_safe_load(tens_dict):
+#     t, json_len, metadata = safe_load_metadata(tens_dict)
+#     ret = {}
+#     for k,v in metadata.items():
+#         if k == "__metadata__": continue
+#         dtype = safe_dtypes[v['dtype']]
+#         sz = (v['data_offsets'][1]-v['data_offsets'][0])
+#         ret[k] = t[8+json_len+v['data_offsets'][0]:8+json_len+v['data_offsets'][0]+sz].bitcast(dtype).reshape(v['shape'])
+#     return ret
+
+# ret = hack_safe_load(tens_dict)
+# print(ret)
+
+ 
+# from safetensors.torch import load_file
+# from safetensors import safe_open
+# sf = cwd + "/models/model.safetensors"
 
 # tensors = {}
 # with safe_open(sf, framework="pt", device="cpu") as f:
@@ -141,6 +184,7 @@ sf = cwd + "/models/model.safetensors"
 #         tensors[key] = f.get_tensor(key)
 #     print(tensors)
 
-state_dict = load_file(sf)
-for key, value in state_dict.items():
-    print(f"{key} {value}")
+# state_dict = load_file(sf)
+# print(state_dict)
+# for key, value in state_dict.items():
+#     print(f"{key} {value}")
