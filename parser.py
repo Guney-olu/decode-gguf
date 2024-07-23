@@ -129,8 +129,18 @@ with open(f2, "rb") as f:
             weights = weights.reshape(shape[::-1])
         
         t_tensor_view = translate_name(name)
-        print(t_tensor_view)
-        print(weights)
-
-
+        #print(f"{t_tensor_view} {shape}")
         
+from safetensors.torch import load_file
+from safetensors import safe_open
+sf = cwd + "/models/model.safetensors"
+
+# tensors = {}
+# with safe_open(sf, framework="pt", device="cpu") as f:
+#     for key in f.keys():
+#         tensors[key] = f.get_tensor(key)
+#     print(tensors)
+
+state_dict = load_file(sf)
+for key, value in state_dict.items():
+    print(f"{key} {value}")
