@@ -3,7 +3,7 @@ Source -> https://github.com/99991/pygguf/blob/main/gguf.py
 """
 import struct
 import numpy as np
-from helper import DATA_TYPES,GGML_BLOCK_SIZES,GGML_ELEMENTS_PER_BLOCK,GGML_NAMES,GGML_DEQUANTIZE,GGML_TYPES
+from helper import DATA_TYPES,GGML_BLOCK_SIZES,GGML_ELEMENTS_PER_BLOCK,GGML_NAMES,GGML_DEQUANTIZE,translate_name
 
 
 def read_value(f, data_type):
@@ -120,4 +120,17 @@ with open(f2, "rb") as f:
     info , tensor = load_gguf(f)
     for name in tensor:
         weights = load_gguf_tensor(f, tensor, name)
+        shape = tensor[name]["shape"]
+        if ".attn_k." in name or ".attn_q." in name:
+            num_heads = info["llama.attention.head_count"]
+            tmp_shape = (shape[-1] // num_heads // 2, num_heads, 2, shape[0])
+            weights = weights.reshape(tmp_shape)
+            weights = weights.transpose(0, 2, 1, 3)
+            weights = weights.reshape(shape[::-1])
+        
+        t_tensor_view = translate_name(name)
+        print(t_tensor_view)
         print(weights)
+
+
+        
