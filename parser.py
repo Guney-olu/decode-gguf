@@ -113,36 +113,9 @@ def load_gguf_tensor(f,tensorinfo,name):
 
     return values.reshape(shape[::-1])
 
-import os
-cwd = os.getcwd()
 
-import torch
-from tinygrad.nn.state import safe_save,safe_load_metadata
-from tinygrad import Tensor
-
-f2 = cwd + "/models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
-with open(f2, "rb") as f:
-    info , tensor = load_gguf(f)
-    tens_dict = {}
-    for name in tensor:
-        weights = load_gguf_tensor(f, tensor, name)
-        shape = tensor[name]["shape"]
-        if ".attn_k." in name or ".attn_q." in name:
-            num_heads = info["llama.attention.head_count"]
-            tmp_shape = (shape[-1] // num_heads // 2, num_heads, 2, shape[0])
-            weights = weights.reshape(tmp_shape)
-            weights = weights.transpose(0, 2, 1, 3)
-            weights = weights.reshape(shape[::-1])
-        
-        t_tensor_view = translate_name(name)
-        # print(f"{t_tensor_view} : {(torch.from_numpy(weights)).dtype}")
-        # print(f"{t_tensor_view} : {Tensor(weights)}")
-        tens_dict[t_tensor_view] = Tensor(weights.astype(np.float16))
-           
-    safe_save(tens_dict,"models/tinymod.safetensor")
-    
-
-
+"""
+Some fails
 ##--/////----/-//////////-----------//////////////--------//////-
 # from tinygrad.dtype import dtypes
 # import json
@@ -188,3 +161,4 @@ with open(f2, "rb") as f:
 # print(state_dict)
 # for key, value in state_dict.items():
 #     print(f"{key} {value}")
+"""
